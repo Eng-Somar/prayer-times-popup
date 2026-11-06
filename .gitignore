@@ -1,0 +1,10 @@
+# Build output (the exe is published on the Releases page)
+dist/
+*.exe
+*.pdb
+
+# Optional local adhan audio
+*.wav
+
+# Claude Code local settings
+.claude/
