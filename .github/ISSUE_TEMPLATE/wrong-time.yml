@@ -1,0 +1,29 @@
+name: Wrong prayer time · وقت غير صحيح
+description: A time differs from your official timetable
+labels: [accuracy]
+body:
+  - type: input
+    id: city
+    attributes:
+      label: City and country · المدينة والدولة
+      description: A city is enough. Please don't post your exact coordinates.
+    validations:
+      required: true
+  - type: input
+    id: method
+    attributes:
+      label: Calculation method and Asr setting · طريقة الحساب
+    validations:
+      required: true
+  - type: textarea
+    id: times
+    attributes:
+      label: Date, the app's time, and the official time · التاريخ والوقتان
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Link to the official timetable · رابط التقويم الرسمي
+    validations:
+      required: true

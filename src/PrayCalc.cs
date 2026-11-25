@@ -5,10 +5,13 @@ public class MethodDef
     public readonly string Key, En, Ar;
     public readonly double Fajr, Isha, Maghrib; // twilight angles (Maghrib 0 = sunset)
     public readonly int IshaMin;                // fixed minutes after maghrib (0 = use angle)
+    public readonly int RamadanIshaMin;         // replaces IshaMin during Ramadan (0 = no change)
+    public readonly int[] Tune;                 // fixed minutes the official timetable adds to each time
 
-    public MethodDef(string key, string en, string ar, double fajr, double isha, int ishaMin, double maghrib)
+    public MethodDef(string key, string en, string ar, double fajr, double isha, int ishaMin, double maghrib, int ramadanIshaMin = 0, int[] tune = null)
     {
-        Key = key; En = en; Ar = ar; Fajr = fajr; Isha = isha; IshaMin = ishaMin; Maghrib = maghrib;
+        Key = key; En = en; Ar = ar; Fajr = fajr; Isha = isha; IshaMin = ishaMin; Maghrib = maghrib; RamadanIshaMin = ramadanIshaMin;
+        Tune = tune ?? new int[6];
     }
 
     public string Name(bool ar) { return ar ? Ar : En; }
@@ -22,9 +25,9 @@ public static class PrayCalc
     public static readonly MethodDef[] Methods =
     {
         new MethodDef("mwl",       "Muslim World League",              "رابطة العالم الإسلامي",              18,   17,   0,  0),
-        new MethodDef("makkah",    "Umm al-Qura, Makkah",              "أم القرى، مكة المكرمة",              18.5, 0,    90, 0),
+        new MethodDef("makkah",    "Umm al-Qura, Makkah",              "أم القرى، مكة المكرمة",              18.5, 0,    90, 0, 120),
         new MethodDef("egypt",     "Egyptian General Authority",       "الهيئة المصرية العامة للمساحة",      19.5, 17.5, 0,  0),
-        new MethodDef("dubai",     "UAE (GAIAE)",                      "الإمارات (الهيئة العامة للشؤون الإسلامية)",                  18.2, 18.2, 0,  0),
+        new MethodDef("dubai",     "UAE (GAIAE)",                      "الإمارات (الهيئة العامة للشؤون الإسلامية)",                  18.2, 18.2, 0,  0, 0, new[] { 0, -4, 3, 1, 4, 0 }), // fitted to the Dubai IACAD timetable, Nov 2026
         new MethodDef("kuwait",    "Kuwait",                           "الكويت",                             18,   17.5, 0,  0),
         new MethodDef("qatar",     "Qatar",                            "قطر",                                18,   0,    90, 0),
         new MethodDef("jordan",    "Jordan / Palestine",               "الأردن / فلسطين",                    18,   18,   0,  0),
@@ -69,8 +72,17 @@ public static class PrayCalc
         return Find(key == "auto" ? AutoKey(country) : key);
     }
 
+    public static DateTime[] ApplyOffsets(DateTime[] times, int[] minutes)
+    {
+        var res = new DateTime[times.Length];
+        for (int i = 0; i < times.Length; i++)
+            res[i] = times[i] == DateTime.MinValue ? times[i] : times[i].AddMinutes(minutes[i]);
+        return res;
+    }
+
     // Returns [Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha] for the given local date.
-    public static DateTime[] Compute(DateTime date, double lat, double lng, MethodDef m, int asrFactor, int highLatRule)
+    // A time that doesn't occur (polar day or night) is DateTime.MinValue.
+    public static DateTime[] Compute(DateTime date, double lat, double lng, MethodDef m, int asrFactor, int highLatRule, int hijriAdjust = 0)
     {
         double tz = TimeZoneInfo.Local.GetUtcOffset(date.Date.AddHours(12)).TotalHours;
         var c = new Calc { Lat = lat, JDate = Julian(date.Year, date.Month, date.Day) - lng / (15 * 24.0) };
@@ -95,16 +107,17 @@ public static class PrayCalc
         fajr = AdjustHL(fajr, sunrise, m.Fajr, night, true, highLatRule);
         if (m.IshaMin == 0) isha = AdjustHL(isha, sunset, m.Isha, night, false, highLatRule);
         if (m.Maghrib > 0) maghrib = AdjustHL(maghrib, sunset, m.Maghrib, night, false, highLatRule);
-        if (m.IshaMin > 0) isha = maghrib + m.IshaMin / 60.0;
+        if (m.IshaMin > 0)
+        {
+            int ishaMin = m.RamadanIshaMin > 0 && Hijri.IsRamadan(date, hijriAdjust) ? m.RamadanIshaMin : m.IshaMin;
+            isha = maghrib + ishaMin / 60.0;
+        }
 
         double[] hrs = { fajr, sunrise, dhuhr, asr, maghrib, isha };
         var res = new DateTime[6];
         for (int i = 0; i < 6; i++)
-        {
-            double h = double.IsNaN(hrs[i]) ? 0 : hrs[i];
-            res[i] = date.Date.AddMinutes(Math.Round(h * 60));
-        }
-        return res;
+            res[i] = double.IsNaN(hrs[i]) ? DateTime.MinValue : date.Date.AddMinutes(Math.Round(hrs[i] * 60));
+        return ApplyOffsets(res, m.Tune);
     }
 
     static double Guess(double hours, double fallback)
@@ -158,6 +171,7 @@ public static class PrayCalc
         {
             double decl, eqt;
             SunPos(JDate + t, out decl, out eqt);
+            if (Math.Abs(Lat - decl) >= 90) return double.NaN; // the sun never rises, so there is no shadow to measure
             double angle = -ArcCot(factor + Tan(Math.Abs(Lat - decl)));
             return SunAngleTime(angle, t, false);
         }

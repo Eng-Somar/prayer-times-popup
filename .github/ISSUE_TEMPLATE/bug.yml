@@ -1,0 +1,27 @@
+name: Bug · خطأ
+description: Something doesn't work
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect? · ماذا حدث وماذا توقعت؟
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce · خطوات التكرار
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version, Windows version and display scaling · الإصدارات
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: "Relevant lines from %APPDATA%\PrayerTimesPopup\errors.log"
+      description: Remove anything personal first.

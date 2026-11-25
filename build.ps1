@@ -6,10 +6,12 @@ if (-not (Test-Path $csc)) { $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framewo
 $dist = Join-Path $root 'dist'
 $exe  = Join-Path $dist 'PrayerTimes.exe'
 $ico  = Join-Path $root 'app.ico'
+$data = Join-Path $root 'data\adhkar.tsv'
 New-Item -ItemType Directory -Force $dist | Out-Null
 
 $common = @('/nologo', '/target:winexe', '/optimize+', '/codepage:65001',
-            '/r:System.Device.dll', '/r:System.Windows.Forms.dll', '/r:System.Drawing.dll')
+            '/r:System.Device.dll', '/r:System.Windows.Forms.dll', '/r:System.Drawing.dll',
+            "/resource:$data,adhkar.tsv")
 $src = Join-Path $root 'src\*.cs'
 
 if (-not (Test-Path $ico)) {
