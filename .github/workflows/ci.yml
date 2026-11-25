@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test
+        shell: powershell
+        run: ./test.ps1
+      - name: Build
+        shell: powershell
+        run: ./build.ps1
+      - name: Show the SHA-256
+        shell: powershell
+        run: Get-FileHash dist\PrayerTimes.exe -Algorithm SHA256 | Format-List
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PrayerTimes
+          path: dist/PrayerTimes.exe
+          if-no-files-found: error

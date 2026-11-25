@@ -6,5 +6,6 @@ dist/
 # Optional local adhan audio
 *.wav
 
-# Claude Code local settings
+# Local agent tool state
 .claude/
+.omc/
